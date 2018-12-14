@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>HTML5 Audio speech synthesis API</title>
+
+	<style>
+		html { font: normal 1em 'Open Sans', Arial, sans-serif; }
+		.speaking {
+			margin: 1rem;
+		}
+		.recording {
+			float: left;
+			width: 33.3%;
+			margin: 1rem;
+		}
+		.logs {
+			background-color: #eee;
+			overflow-y: scroll;
+			height: 200px;
+			margin: 1rem;
+			padding: .5rem;
+			box-sizing: border-box;
+		}
+		.logs > h3 { background-color: #ddd; margin: .5rem; padding: .5rem; }
+		.logs > div { margin: .5rem; }
+		
+		input[type=button], select { display: block; font-size: 1.2rem; }
+		[name='language'] { float: left; margin-right: 1rem; margin-top: .1rem; }
+		[x-webkit-speech] { display: none; }
+		#loader { display: none; }
+		#speech { display: block; width: 70%; }
+		#result { padding: .5rem; background: #eee; display: block; }
+
+		.info { background-color: rgba(255,150,0,.2); padding: .2rem; }
+	</style>
+</head>
+<body>
+
+<div class="speaking">
+	<h1>HTML5 Audio speech synthesis API</h1>
+	<p class="info"><small>Works on <b>webkit</b> only for the moment (see the <a href="http://caniuse.com/#search=speech">compatibility table</a> for more infos)</small></p>
+
+	<textarea id="speech" cols="30" rows="10">Hi fellows! Did you know that the HTML5 web audio API rocks?!</textarea>
+
+	<input type="button" id="btn_speech" value="Speech !">
+</div>
+
+<hr>
+
+<div class="recording">
+	<h1>Talk in the micro</h1>
+	<p class="info"><small>Works on <b>webkit</b> only for the moment (see the <a href="http://caniuse.com/#search=speech">compatibility table</a> for more infos)</small></p>
+
+	<p>Please speak clearly and audibly to make it work</p>
+
+	<select name="language">
+		<option value="en-GB" selected>English (GB)</option>
+		<option value="fr-FR">Français</option>
+		<option value="sv-SE">Swedish (SE)</option>
+	</select>
+
+	<input type="button" id="btn_talk" value="Record your voice" data-record="Record your voice" data-stop-record="Stop recording ...">
+
+	<p><b>Final result :</b></p><output id="result"><img src="ajax-loader.gif" alt="" id="loader"></output>
+	<input type="text" x-webkit-speech />
+</div>
+
+<pre class="logs"><h3>Logs</h3></pre>
+
+<script>
+
+// Compatibility
+window.SpeechSynthesisUtterance = window.SpeechSynthesisUtterance || window.webkitSpeechSynthesisUtterance;
+window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+(function() {
+	'use strict';
+
+	var txtEl = document.querySelector('#speech');
+
+	var btn = document.querySelector('#btn_speech');
+	btn.addEventListener('click', function(evt) {
+		
+		var speech = new SpeechSynthesisUtterance();
+		var voices = window.speechSynthesis.getVoices(); // Array of voices (0 is currently the only one)
+		speech.voice = voices[0];
+		speech.text = txtEl.value;
+
+		speechSynthesis.speak(speech);
+	});
+})();
+
+(function() {
+	'use strict';
+
+	var loader = document.querySelector('#loader');
+	var btn = document.querySelector('#btn_talk');
+	var language = document.querySelector('[name=language]');
+	var result = document.querySelector('#result');
+	var logs = document.querySelector('.logs');
+	var recognition = new SpeechRecognition();
+	recognition.lang = "en-GB"; //fr-FR
+	recognition.continuous = true;
+	recognition.interimResults = true;
+	recognition.onresult = function(evt) {
+		if (event.results.length > 0) {
+			log('Something returned : "' + event.results[0][0].transcript + '"', event.results);
+			logs.scrollTop = logs.scrollHeight;
+
+			[].forEach.call(event.results, function(sentence, index) {
+				if (sentence.isFinal) {
+					result.value = sentence[0].transcript;
+					reco.stop(recognition);
+				}
+			});
+		} else {
+			reco.stop(recognition);
+			log('Nothing returned :(');
+			logs.scrollTop = logs.scrollHeight;
+		}
+	};
+
+	btn.addEventListener('click', function(evt) {
+		if (!reco.status) {
+			reco.start(recognition);
+		} else {
+			reco.stop(recognition);
+		}
+	});
+
+	language.addEventListener('change', function(evt) {
+		var el = evt.target;
+
+		recognition.lang = el.value;
+		console.log(el, el.value, recognition.lang);
+	});
+
+	var reco = {
+		status : false,
+		start : function (r) {
+			r.start();
+
+			loader.style.display = 'inline-block';
+			btn.value = btn.dataset.stopRecord;
+			// btn.disabled = 'disabled';
+			this.status = !this.status;
+		},
+		stop : function (r) {
+			r.stop();
+
+			loader.style.display = 'none';
+			btn.value = btn.dataset.record;
+			// btn.removeAttribute('disabled');
+			this.status = !this.status;
+		}
+	};
+
+})();
+
+function log(msg, data) {
+	console.log(msg, data);
+	var msgNode = document.createTextNode(msg);
+	var logNode = document.createElement('div');
+	logNode.appendChild(msgNode);
+	document.querySelector('.logs').appendChild(logNode);
+}
+
+</script>
+
+</body>
+</html>
